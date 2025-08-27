@@ -1,20 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getClasses } from "../api";
 
 function ClassesPage() {
   const [courses, setCourses] = useState([]);
 
   useEffect(() => {
-  fetch("http://localhost:4000/classroom/courses", {
-    credentials: "include"
-  })
-    .then(res => res.json())
-    .then(data => {
-      console.log("Frontend got:", data);
-      // If backend sends an array, just set it directly
-      setCourses(Array.isArray(data) ? data : data.courses || []);
-    })
-    .catch(err => console.error("Error fetching courses:", err));
+  getClasses().then(data => setCourses(Array.isArray(data) ? data : (data.courses || []))).catch(console.error);
 }, []);
 
   return (

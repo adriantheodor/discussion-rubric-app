@@ -1,32 +1,43 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+// frontend/src/pages/StudentsPage.jsx
+import React, { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { API } from "../api";
 
-function StudentsPage() {
-  const { classId } = useParams();
+export default function StudentsPage({ assignmentId: propAssignmentId }) {
+  const params = useParams();
+  const classId = params.classId || params.courseId;
+  const assignmentId = propAssignmentId || params.assignmentId;
   const [students, setStudents] = useState([]);
-  const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`http://localhost:4000/api/classes/${classId}/students`, { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => setStudents(data))
+    if (!classId) return;
+    fetch(`${API}/api/classes/${classId}/students`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((s) => setStudents(s || []))
       .catch(console.error);
   }, [classId]);
 
   return (
     <div>
-      <h2>Students</h2>
+      <h3>Students</h3>
       <ul>
-        {students.map(s => (
-          <li key={s.id}>
-            <button onClick={() => navigate(`/classes/${classId}/assignments/ASSIGNMENT_ID/grade/${s.id}`)}>
-              {s.name}
-            </button>
-          </li>
-        ))}
+        {students.map((s) => {
+          const studentId = s.id || s.userId || (s.profile && s.profile.id);
+          const name = s.name || (s.profile && s.profile.name && s.profile.name.fullName) || studentId;
+          return (
+            <li key={studentId}>
+              {name}{" "}
+              {assignmentId ? (
+                <Link to={`/classes/${classId}/assignments/${assignmentId}/grade/${studentId}`}>
+                  Grade
+                </Link>
+              ) : (
+                <span style={{ color: "#777" }}>Select an assignment</span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
-
-export default StudentsPage;

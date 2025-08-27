@@ -19,7 +19,7 @@ function AssignmentsPage() {
       <ul>
         {assignments.map(a => (
           <li key={a.id}>
-            <button onClick={() => navigate(`/classes/${classId}/students`)}>
+            <button onClick={() => navigate(`/classes/${classId}/assignments/${a.id}`)}>
               {a.title}
             </button>
           </li>

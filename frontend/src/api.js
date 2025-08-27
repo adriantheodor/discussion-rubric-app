@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_API || 'http://localhost:4000';
+export const API = import.meta.env.VITE_API || 'http://localhost:4000';
 
 export async function me() {
   const r = await fetch(`${API}/api/me`, { credentials: 'include' });
