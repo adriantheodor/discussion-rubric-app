@@ -72,7 +72,7 @@ app.get("/auth/callback", async (req, res) => {
 });
 
 
-a// Example wrappers to add AFTER createOAuthClient/getOAuthClientFromSession are available
+// Example wrappers to add AFTER createOAuthClient/getOAuthClientFromSession are available
 
 app.get("/api/classes", async (req, res) => {
   try {

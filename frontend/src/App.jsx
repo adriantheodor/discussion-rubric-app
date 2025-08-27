@@ -5,6 +5,7 @@ import AssignmentsPage from './pages/AssignmentsPage';
 import StudentsPage from './pages/StudentsPage';
 import GradePage from './pages/GradePage';
 import ClassDetailPage from "./pages/ClassDetailPage"; 
+import AssignmentDetailPage from './pages/AssignmentDetailPage';
 
 
 function App() {
