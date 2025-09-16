@@ -1,11 +1,6 @@
-const { google } = require('googleapis');
-
-const SCOPES = [
-  'https://www.googleapis.com/auth/classroom.courses.readonly',
-  'https://www.googleapis.com/auth/classroom.rosters.readonly',
-  'https://www.googleapis.com/auth/classroom.coursework.students',
-  'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
-];
+// backend/auth.js
+const { google } = require("googleapis");
+require("dotenv").config();
 
 function createOAuthClient() {
   return new google.auth.OAuth2(
@@ -15,13 +10,16 @@ function createOAuthClient() {
   );
 }
 
-function getAuthUrl(oauth2Client, state = '') {
-  return oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    prompt: 'consent',
-    scope: SCOPES,
-    state,
-  });
+function getOAuthScopes() {
+  return [
+    "openid",
+    "profile",
+    "email",
+    "https://www.googleapis.com/auth/classroom.courses.readonly",
+    "https://www.googleapis.com/auth/classroom.coursework.students",
+    "https://www.googleapis.com/auth/classroom.rosters.readonly",
+  ];
 }
 
-module.exports = { createOAuthClient, getAuthUrl };
+module.exports = { createOAuthClient, getOAuthScopes };
+

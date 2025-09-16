@@ -3,37 +3,30 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { API } from "../api";
 
-export default function StudentsPage({ assignmentId: propAssignmentId }) {
-  const params = useParams();
-  const classId = params.classId || params.courseId;
-  const assignmentId = propAssignmentId || params.assignmentId;
+export default function StudentsPage() {
+  const { classId } = useParams();
   const [students, setStudents] = useState([]);
 
   useEffect(() => {
-    if (!classId) return;
     fetch(`${API}/api/classes/${classId}/students`, { credentials: "include" })
       .then((r) => r.json())
-      .then((s) => setStudents(s || []))
+      .then((data) => setStudents(data || []))
       .catch(console.error);
   }, [classId]);
 
   return (
     <div>
-      <h3>Students</h3>
+      <h2>Students in Class {classId}</h2>
       <ul>
         {students.map((s) => {
-          const studentId = s.id || s.userId || (s.profile && s.profile.id);
-          const name = s.name || (s.profile && s.profile.name && s.profile.name.fullName) || studentId;
+          const studentId = s.id || s.userId;
+          const studentName =
+            s.name || s.profile?.name?.fullName || "Unnamed Student";
           return (
             <li key={studentId}>
-              {name}{" "}
-              {assignmentId ? (
-                <Link to={`/classes/${classId}/assignments/${assignmentId}/grade/${studentId}`}>
-                  Grade
-                </Link>
-              ) : (
-                <span style={{ color: "#777" }}>Select an assignment</span>
-              )}
+              <Link to={`/classes/${classId}/grade/${studentId}`}>
+                {studentName}
+              </Link>
             </li>
           );
         })}

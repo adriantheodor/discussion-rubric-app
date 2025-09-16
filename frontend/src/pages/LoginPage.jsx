@@ -1,6 +1,6 @@
 function LoginPage() {
   const handleLogin = () => {
-    window.location.href = 'http://localhost:4000/auth/login';
+    window.location.href = 'http://localhost:4000/auth/google';
   };
 
   return (
