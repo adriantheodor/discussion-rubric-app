@@ -20,19 +20,27 @@ export default function GradePage() {
   const navigate = useNavigate();
 
 
-  // load student info
-  useEffect(() => {
-    if (!classId || !studentId) return;
-    getStudents(classId)
-      .then((list) => {
-        const s = (list || []).find((x) => x.userId === studentId || x.id === studentId);
-        setStudent(s || { id: studentId, name: "Student" });
-      })
-      .catch((err) => {
-        console.error("getStudents error", err);
-        setStudent({ id: studentId, name: "Student" });
-      });
-  }, [classId, studentId]);
+ useEffect(() => {
+  if (!classId || !studentId) return;
+  getStudents(classId)
+    .then((list) => {
+      const s = (list || []).find(
+        (x) => x.userId === studentId || x.id === studentId
+      );
+      if (s) {
+        setStudent({
+          id: s.userId || s.id,
+          name: s.profile?.name?.fullName || "Unnamed Student", // ✅ grab full name
+        });
+      } else {
+        setStudent({ id: studentId, name: "Unknown Student" });
+      }
+    })
+    .catch((err) => {
+      console.error("getStudents error", err);
+      setStudent({ id: studentId, name: "Student" });
+    });
+}, [classId, studentId]);
 
   const percent =
   maxPointsSoFar > 0
@@ -143,20 +151,20 @@ export default function GradePage() {
       ))}
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
-        <button onClick={handleSubmit} style={{ padding: "10px 16px", fontSize: 16 }}>
-          SUBMIT GRADE ({total})
-        </button>
+        <button className="btn btn-success btn-lg w-100 mt-3" onClick={handleSubmit}>
+    Submit Grade ({total})
+  </button>
         <div>{status}</div>
       </div>
 
       <hr />
-
+      <div className="mt-4">
       <h4>Recent history</h4>
       <div>Cumulative: {cumulative}</div>
       <div>Days graded: {daysGraded}</div>
       <div>Max possible so far: {maxPointsSoFar}</div> 
       <div>Percentage: {percent}%</div> 
-      <ul>
+      <ul className="list-unstyled">
         {history.length === 0 ? (
           <li>No past scores</li>
         ) : (
@@ -167,6 +175,7 @@ export default function GradePage() {
           ))
         )}
       </ul>
+      </div>
     </div>
   );
 }

@@ -1,11 +1,12 @@
 // frontend/src/pages/StudentsPage.jsx
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { API } from "../api";
 
 export default function StudentsPage() {
   const { classId } = useParams();
   const [students, setStudents] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch(`${API}/api/classes/${classId}/students`, { credentials: "include" })
@@ -16,21 +17,24 @@ export default function StudentsPage() {
 
   return (
     <div>
+      <button
+        className="btn btn-link mb-3"
+        onClick={() => navigate("/classes")}
+      >
+        ← Back to List of Classes
+      </button>
       <h2>Students in Class {classId}</h2>
-      <ul>
-        {students.map((s) => {
-          const studentId = s.id || s.userId;
-          const studentName =
-            s.name || s.profile?.name?.fullName || "Unnamed Student";
-          return (
-            <li key={studentId}>
-              <Link to={`/classes/${classId}/grade/${studentId}`}>
-                {studentName}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="list-group">
+    {students.map((s) => (
+      <Link
+        key={s.userId}
+        to={`/classes/${classId}/grade/${s.userId}`}
+        className="list-group-item list-group-item-action p-3 fs-5"
+      >
+        {s.profile?.name?.fullName}
+      </Link>
+    ))}
+  </div>
     </div>
   );
 }
