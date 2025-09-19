@@ -1,6 +1,7 @@
 function LoginPage() {
   const handleLogin = () => {
-    window.location.href = "http://localhost:4000/auth/google";
+    const BACKEND_URL = "https://discussion-rubric-app.onrender.com";
+    window.location.href = `${BACKEND_URL}/auth/google`;
   };
 
   return (
