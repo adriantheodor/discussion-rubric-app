@@ -9,18 +9,32 @@ const { createOAuthClient, getOAuthScopes } = require("./routes/auth");
 const Participation = require("./models/Participation");
 
 const app = express();
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+
+const FRONTEND_URL =
+  process.env.NODE_ENV === "production"
+    ? process.env.FRONTEND_URL
+    : "http://localhost:5173";
+
+// CORS
+app.use(
+  cors({ origin: FRONTEND_URL, credentials: true })
+);
 app.use(express.json());
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "dev-secret",
     resave: false,
     saveUninitialized: true,
-    cookie: { httpOnly: true, sameSite: "lax", secure: false },
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production", // secure in prod
+    },
   })
 );
 
-// Mongo
+// MongoDB connection
 mongoose
   .connect(process.env.MONGODB_URI, {
     dbName: process.env.MONGODB_DB || undefined,
@@ -32,13 +46,14 @@ mongoose
 // Helpers
 function todayNY(date) {
   const tz = "America/New_York";
-  if (date) return new Date(date).toLocaleDateString("en-CA", { timeZone: tz });
-  return new Date().toLocaleDateString("en-CA", { timeZone: tz });
+  return date
+    ? new Date(date).toLocaleDateString("en-CA", { timeZone: tz })
+    : new Date().toLocaleDateString("en-CA", { timeZone: tz });
 }
+
 function getOAuthClientFromSession(req) {
   const client = createOAuthClient();
-  if (req.session && req.session.tokens)
-    client.setCredentials(req.session.tokens);
+  if (req.session && req.session.tokens) client.setCredentials(req.session.tokens);
   return client;
 }
 
@@ -58,8 +73,10 @@ app.get("/auth/callback", async (req, res) => {
     const code = req.query.code;
     const oauth2Client = createOAuthClient();
     const { tokens } = await oauth2Client.getToken(code);
-    req.session.tokens = tokens; // store tokens in session (for production store per-user)
-    res.redirect("http://localhost:5173/classes");
+    req.session.tokens = tokens;
+
+    // Redirect to frontend dynamically
+    res.redirect(`${FRONTEND_URL}/classes`);
   } catch (err) {
     console.error("OAuth callback error", err);
     res.status(500).send("Auth error");
@@ -288,14 +305,14 @@ app.get("/api/participation/history", async (req, res) => {
   }
 });
 
-// Logout route
+// Logout
 app.post("/auth/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err) {
       console.error("Logout error", err);
       return res.status(500).json({ error: "Logout failed" });
     }
-    res.clearCookie("connect.sid"); // clear session cookie
+    res.clearCookie("connect.sid");
     res.json({ success: true });
   });
 });
