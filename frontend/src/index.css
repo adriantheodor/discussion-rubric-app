@@ -55,12 +55,12 @@ button:focus-visible {
 }
 
 .rubric-container {
-  max-width: 800px;     /* keeps things readable */
-  margin: 2rem auto;    /* centers horizontally */
+  max-width: 800px; /* keeps things readable */
+  margin: 2rem auto; /* centers horizontally */
   padding: 2rem;
   background: #fff;
   border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .rubric-title {
@@ -124,7 +124,6 @@ button:focus-visible {
 .submit-btn:hover {
   background-color: #357ab8;
 }
-
 
 @media (prefers-color-scheme: light) {
   :root {

@@ -19,6 +19,9 @@ const ParticipationSchema = new mongoose.Schema(
 );
 
 // Enforce one record per student per day per class
-ParticipationSchema.index({ courseId: 1, studentId: 1, date: 1 }, { unique: true });
+ParticipationSchema.index(
+  { courseId: 1, studentId: 1, date: 1 },
+  { unique: true }
+);
 
 module.exports = mongoose.model("Participation", ParticipationSchema);

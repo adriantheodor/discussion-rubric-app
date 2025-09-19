@@ -12,11 +12,15 @@ export default function AssignmentDetailPage() {
     if (!classId || !assignmentId) return;
 
     // fetch assignment metadata (if API provides an endpoint for a single assignment)
-    fetch(`${API}/api/classes/${classId}/assignments`, { credentials: "include" })
+    fetch(`${API}/api/classes/${classId}/assignments`, {
+      credentials: "include",
+    })
       .then((r) => r.json())
       .then((list) => {
         const found = (list || []).find((a) => a.id === assignmentId);
-        setAssignment(found || { id: assignmentId, title: "Unknown assignment" });
+        setAssignment(
+          found || { id: assignmentId, title: "Unknown assignment" }
+        );
       })
       .catch(console.error);
 
@@ -36,11 +40,17 @@ export default function AssignmentDetailPage() {
         {students.map((s) => {
           // note: your student id field might be s.id or s.userId; adjust if needed
           const studentId = s.id || s.userId || (s.profile && s.profile.id);
-          const studentName = s.name || (s.profile && s.profile.name && s.profile.name.fullName) || s.email || studentId;
+          const studentName =
+            s.name ||
+            (s.profile && s.profile.name && s.profile.name.fullName) ||
+            s.email ||
+            studentId;
           return (
             <li key={studentId}>
               {studentName}{" "}
-              <Link to={`/classes/${classId}/assignments/${assignmentId}/grade/${studentId}`}>
+              <Link
+                to={`/classes/${classId}/assignments/${assignmentId}/grade/${studentId}`}
+              >
                 Grade
               </Link>
             </li>

@@ -11,9 +11,12 @@ export default function ClassDetailPage() {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const res = await fetch(`http://localhost:4000/api/classes/${id}/students`, {
-          credentials: "include",
-        });
+        const res = await fetch(
+          `http://localhost:4000/api/classes/${id}/students`,
+          {
+            credentials: "include",
+          }
+        );
 
         if (!res.ok) throw new Error("Failed to fetch students");
 
@@ -37,7 +40,10 @@ export default function ClassDetailPage() {
 
   return (
     <div className="container">
-      <button className="btn btn-link mb-3" onClick={() => navigate("/classes")}>
+      <button
+        className="btn btn-link mb-3"
+        onClick={() => navigate("/classes")}
+      >
         ← Back to Classes
       </button>
 
@@ -50,7 +56,9 @@ export default function ClassDetailPage() {
             {students.map((student) => (
               <li key={student.userId} style={{ margin: "10px 0" }}>
                 <button
-                  onClick={() => navigate(`/classes/${id}/grade/${student.userId}`)}
+                  onClick={() =>
+                    navigate(`/classes/${id}/grade/${student.userId}`)
+                  }
                   style={{
                     padding: "16px",
                     fontSize: "18px",

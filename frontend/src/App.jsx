@@ -13,7 +13,10 @@ function App() {
           <Route path="/" element={<LoginPage />} />
           <Route path="/classes" element={<ClassesPage />} />
           <Route path="/classes/:classId" element={<StudentsPage />} />
-          <Route path="/classes/:classId/grade/:studentId" element={<GradePage />} />
+          <Route
+            path="/classes/:classId/grade/:studentId"
+            element={<GradePage />}
+          />
         </Routes>
       </BrowserRouter>
     </main>
@@ -21,4 +24,3 @@ function App() {
 }
 
 export default App;
-

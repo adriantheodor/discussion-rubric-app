@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { API } from "../api";
+import "./StudentsPage.css";
 
 export default function StudentsPage() {
   const { classId } = useParams();
@@ -16,25 +17,30 @@ export default function StudentsPage() {
   }, [classId]);
 
   return (
-    <div>
-      <button
-        className="btn btn-link mb-3"
-        onClick={() => navigate("/classes")}
-      >
-        ← Back to List of Classes
+    <div className="students-container">
+      <button className="back-button" onClick={() => navigate("/classes")}>
+        ← Back to Classes
       </button>
-      <h2>Students in Class {classId}</h2>
-      <div className="list-group">
-    {students.map((s) => (
-      <Link
-        key={s.userId}
-        to={`/classes/${classId}/grade/${s.userId}`}
-        className="list-group-item list-group-item-action p-3 fs-5"
-      >
-        {s.profile?.name?.fullName}
-      </Link>
-    ))}
-  </div>
+
+      <h2 className="page-title">Students</h2>
+      <p className="class-id">Class ID: {classId}</p>
+
+      {students.length === 0 ? (
+        <p className="empty-message">No students found.</p>
+      ) : (
+        <ul className="students-list">
+          {students.map((s) => (
+            <li key={s.userId}>
+              <Link
+                to={`/classes/${classId}/grade/${s.userId}`}
+                className="student-button"
+              >
+                {s.profile?.name?.fullName || "Unnamed Student"}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

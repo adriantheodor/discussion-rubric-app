@@ -1,22 +1,24 @@
 // backend/server.js
-require('dotenv').config();
-const express = require('express');
-const session = require('express-session');
-const cors = require('cors');
-const { google } = require('googleapis');
-const mongoose = require('mongoose');
-const { createOAuthClient, getOAuthScopes } = require('./routes/auth');
-const Participation = require('./models/Participation');
+require("dotenv").config();
+const express = require("express");
+const session = require("express-session");
+const cors = require("cors");
+const { google } = require("googleapis");
+const mongoose = require("mongoose");
+const { createOAuthClient, getOAuthScopes } = require("./routes/auth");
+const Participation = require("./models/Participation");
 
 const app = express();
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(express.json());
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev-secret',
-  resave: false,
-  saveUninitialized: true,
-  cookie: { httpOnly: true, sameSite: 'lax', secure: false }
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "dev-secret",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { httpOnly: true, sameSite: "lax", secure: false },
+  })
+);
 
 // Mongo
 mongoose
@@ -29,45 +31,49 @@ mongoose
 
 // Helpers
 function todayNY(date) {
-  const tz = 'America/New_York';
-  if (date) return new Date(date).toLocaleDateString('en-CA', { timeZone: tz });
-  return new Date().toLocaleDateString('en-CA', { timeZone: tz });
+  const tz = "America/New_York";
+  if (date) return new Date(date).toLocaleDateString("en-CA", { timeZone: tz });
+  return new Date().toLocaleDateString("en-CA", { timeZone: tz });
 }
 function getOAuthClientFromSession(req) {
   const client = createOAuthClient();
-  if (req.session && req.session.tokens) client.setCredentials(req.session.tokens);
+  if (req.session && req.session.tokens)
+    client.setCredentials(req.session.tokens);
   return client;
 }
 
 // OAuth routes
-app.get('/auth/google', (req, res) => {
+app.get("/auth/google", (req, res) => {
   const oauth2Client = createOAuthClient();
-  const url = oauth2Client.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: getOAuthScopes() });
+  const url = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    prompt: "consent",
+    scope: getOAuthScopes(),
+  });
   res.redirect(url);
 });
 
-app.get('/auth/callback', async (req, res) => {
+app.get("/auth/callback", async (req, res) => {
   try {
     const code = req.query.code;
     const oauth2Client = createOAuthClient();
     const { tokens } = await oauth2Client.getToken(code);
     req.session.tokens = tokens; // store tokens in session (for production store per-user)
-    res.redirect('http://localhost:5173/classes');
+    res.redirect("http://localhost:5173/classes");
   } catch (err) {
-    console.error('OAuth callback error', err);
-    res.status(500).send('Auth error');
+    console.error("OAuth callback error", err);
+    res.status(500).send("Auth error");
   }
 });
 
-
 // Helper: find or create Participation assignment in Classroom and return id
 async function getOrCreateParticipationAssignment(oauth2Client, courseId) {
-  const classroom = google.classroom({ version: 'v1', auth: oauth2Client });
+  const classroom = google.classroom({ version: "v1", auth: oauth2Client });
 
   // Look for an existing assignment
   const listResp = await classroom.courses.courseWork.list({ courseId });
   const existing = (listResp.data.courseWork || []).find(
-    (cw) => cw.title === 'Participation'
+    (cw) => cw.title === "Participation"
   );
   if (existing) return existing.id;
 
@@ -75,10 +81,10 @@ async function getOrCreateParticipationAssignment(oauth2Client, courseId) {
   const createResp = await classroom.courses.courseWork.create({
     courseId,
     requestBody: {
-      title: 'Participation',
-      description: 'Ongoing participation (cumulative, updated daily).',
-      workType: 'ASSIGNMENT',
-      state: 'PUBLISHED',
+      title: "Participation",
+      description: "Ongoing participation (cumulative, updated daily).",
+      workType: "ASSIGNMENT",
+      state: "PUBLISHED",
       maxPoints: 15, // ✅ start with one day’s max
     },
   });
@@ -86,18 +92,18 @@ async function getOrCreateParticipationAssignment(oauth2Client, courseId) {
   return createResp.data.id;
 }
 
-
 /**
  * Required endpoints (spec)
  */
 
 // GET /api/classes
-app.get('/api/classes', async (req, res) => {
+app.get("/api/classes", async (req, res) => {
   try {
     const oauth2Client = getOAuthClientFromSession(req);
-    if (!oauth2Client.credentials) return res.status(401).json({ error: 'Not authenticated' });
-    const classroom = google.classroom({ version: 'v1', auth: oauth2Client });
-    const resp = await classroom.courses.list({ courseStates: ['ACTIVE'] });
+    if (!oauth2Client.credentials)
+      return res.status(401).json({ error: "Not authenticated" });
+    const classroom = google.classroom({ version: "v1", auth: oauth2Client });
+    const resp = await classroom.courses.list({ courseStates: ["ACTIVE"] });
     res.json(resp.data.courses || []);
   } catch (err) {
     console.error(err);
@@ -106,12 +112,15 @@ app.get('/api/classes', async (req, res) => {
 });
 
 // GET /api/classes/:classId/students
-app.get('/api/classes/:classId/students', async (req, res) => {
+app.get("/api/classes/:classId/students", async (req, res) => {
   try {
     const oauth2Client = getOAuthClientFromSession(req);
-    if (!oauth2Client.credentials) return res.status(401).json({ error: 'Not authenticated' });
-    const classroom = google.classroom({ version: 'v1', auth: oauth2Client });
-    const resp = await classroom.courses.students.list({ courseId: req.params.classId });
+    if (!oauth2Client.credentials)
+      return res.status(401).json({ error: "Not authenticated" });
+    const classroom = google.classroom({ version: "v1", auth: oauth2Client });
+    const resp = await classroom.courses.students.list({
+      courseId: req.params.classId,
+    });
     res.json(resp.data.students || []);
   } catch (err) {
     console.error(err);
@@ -120,12 +129,15 @@ app.get('/api/classes/:classId/students', async (req, res) => {
 });
 
 // GET /api/classes/:classId/assignments
-app.get('/api/classes/:classId/assignments', async (req, res) => {
+app.get("/api/classes/:classId/assignments", async (req, res) => {
   try {
     const oauth2Client = getOAuthClientFromSession(req);
-    if (!oauth2Client.credentials) return res.status(401).json({ error: 'Not authenticated' });
-    const classroom = google.classroom({ version: 'v1', auth: oauth2Client });
-    const resp = await classroom.courses.courseWork.list({ courseId: req.params.classId });
+    if (!oauth2Client.credentials)
+      return res.status(401).json({ error: "Not authenticated" });
+    const classroom = google.classroom({ version: "v1", auth: oauth2Client });
+    const resp = await classroom.courses.courseWork.list({
+      courseId: req.params.classId,
+    });
     res.json(resp.data.courseWork || []);
   } catch (err) {
     console.error(err);
@@ -141,11 +153,11 @@ app.get('/api/classes/:classId/assignments', async (req, res) => {
  */
 // POST /api/grade
 // POST /api/grade
-app.post('/api/grade', async (req, res) => {
+app.post("/api/grade", async (req, res) => {
   try {
     const { courseId, courseWorkId, studentId, scores = {}, date } = req.body;
     if (!courseId || !studentId) {
-      return res.status(400).json({ error: 'courseId and studentId required' });
+      return res.status(400).json({ error: "courseId and studentId required" });
     }
 
     const d = todayNY(date);
@@ -166,8 +178,8 @@ app.post('/api/grade', async (req, res) => {
       { $match: { courseId, studentId } },
       {
         $group: {
-          _id: '$date',
-          score: { $first: '$score' },
+          _id: "$date",
+          score: { $first: "$score" },
         },
       },
     ]);
@@ -179,19 +191,20 @@ app.post('/api/grade', async (req, res) => {
     // 3. Authenticate with Classroom
     const oauth2Client = getOAuthClientFromSession(req);
     if (!oauth2Client.credentials) {
-      return res.status(401).json({ error: 'Not authenticated' });
+      return res.status(401).json({ error: "Not authenticated" });
     }
-    const classroom = google.classroom({ version: 'v1', auth: oauth2Client });
+    const classroom = google.classroom({ version: "v1", auth: oauth2Client });
 
     // 4. Find or create Participation assignment
     const cwId =
-      courseWorkId || (await getOrCreateParticipationAssignment(oauth2Client, courseId));
+      courseWorkId ||
+      (await getOrCreateParticipationAssignment(oauth2Client, courseId));
 
     // 5. Update maxPoints dynamically
     await classroom.courses.courseWork.patch({
       courseId,
       id: cwId,
-      updateMask: 'maxPoints',
+      updateMask: "maxPoints",
       requestBody: { maxPoints: maxPointsSoFar },
     });
 
@@ -218,7 +231,9 @@ app.post('/api/grade', async (req, res) => {
     }
 
     if (!submission) {
-      return res.status(404).json({ error: 'Could not create/find student submission' });
+      return res
+        .status(404)
+        .json({ error: "Could not create/find student submission" });
     }
 
     // 7. Update Classroom grade
@@ -226,7 +241,7 @@ app.post('/api/grade', async (req, res) => {
       courseId,
       courseWorkId: cwId,
       id: submission.id,
-      updateMask: 'draftGrade,assignedGrade',
+      updateMask: "draftGrade,assignedGrade",
       requestBody: {
         draftGrade: cumulative,
         assignedGrade: cumulative,
@@ -235,18 +250,17 @@ app.post('/api/grade', async (req, res) => {
 
     res.json({ success: true, date: d, total, cumulative, maxPointsSoFar });
   } catch (err) {
-    console.error('/api/grade error', err);
-    res.status(500).json({ error: err.message || 'server error' });
+    console.error("/api/grade error", err);
+    res.status(500).json({ error: err.message || "server error" });
   }
 });
 
-
 // GET /api/participation/history?courseId=...&studentId=...
-app.get('/api/participation/history', async (req, res) => {
+app.get("/api/participation/history", async (req, res) => {
   try {
     const { courseId, studentId, limit = 30 } = req.query;
     if (!courseId || !studentId) {
-      return res.status(400).json({ error: 'courseId and studentId required' });
+      return res.status(400).json({ error: "courseId and studentId required" });
     }
 
     // Group by distinct date
@@ -254,8 +268,8 @@ app.get('/api/participation/history', async (req, res) => {
       { $match: { courseId, studentId } },
       {
         $group: {
-          _id: '$date',
-          score: { $first: '$score' },
+          _id: "$date",
+          score: { $first: "$score" },
         },
       },
       { $sort: { _id: -1 } },
@@ -269,10 +283,22 @@ app.get('/api/participation/history', async (req, res) => {
 
     res.json({ entries, cumulative, daysGraded, maxPointsSoFar });
   } catch (err) {
-    console.error('history error', err);
-    res.status(500).json({ error: err.message || 'server error' });
+    console.error("history error", err);
+    res.status(500).json({ error: err.message || "server error" });
   }
 });
 
+// Logout route
+app.post("/auth/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error("Logout error", err);
+      return res.status(500).json({ error: "Logout failed" });
+    }
+    res.clearCookie("connect.sid"); // clear session cookie
+    res.json({ success: true });
+  });
+});
+
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, ()=>console.log(`Server listening on ${PORT}`));
+app.listen(PORT, () => console.log(`Server listening on ${PORT}`));

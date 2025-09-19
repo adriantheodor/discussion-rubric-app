@@ -1,0 +1,65 @@
+.classes-container {
+  margin: 0 auto;
+  padding: 16px;
+  max-width: 900px;
+}
+
+
+
+.empty-message {
+  font-style: italic;
+  color: #888;
+}
+
+.classes-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.class-button {
+  display: block;
+  padding: 16px;
+  font-size: clamp(16px, 2vw, 22px);
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #f9f9f9;
+  cursor: pointer;
+  text-decoration: none;
+  color: black;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.class-button:hover {
+  background-color: #e6f7ff;
+  transform: scale(1.01);
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between; /* pushes logout to the right */
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  margin: 0; /* removes extra spacing */
+  margin-right: 30px;
+}
+
+.logout-btn {
+  padding: 8px 14px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: none;
+  background: #f44336;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.logout-btn:hover {
+  background: #d32f2f;
+}

@@ -22,4 +22,3 @@ function getOAuthScopes() {
 }
 
 module.exports = { createOAuthClient, getOAuthScopes };
-
