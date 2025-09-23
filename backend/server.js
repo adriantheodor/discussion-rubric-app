@@ -10,31 +10,45 @@ const Participation = require("./models/Participation");
 
 const app = express();
 
+// ✅ Define frontend + backend URLs from env
 const FRONTEND_URL =
   process.env.NODE_ENV === "production"
-    ? process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL // e.g. https://discussion-rubric-app.vercel.app
     : "http://localhost:5173";
 
-// CORS
+const BACKEND_URL =
+  process.env.NODE_ENV === "production"
+    ? process.env.BACKEND_URL // e.g. https://discussion-rubric-app.onrender.com
+    : "http://localhost:4000";
+
+// ✅ CORS
 app.use(
-  cors({ origin: FRONTEND_URL, credentials: true })
+  cors({
+    origin: FRONTEND_URL,
+    credentials: true,
+  })
 );
+
 app.use(express.json());
+
+// ✅ trust proxy is required on Render so secure cookies work
+app.set("trust proxy", 1);
 
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "dev-secret",
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production", // secure in prod
+      sameSite: "none", // ✅ allow cross-site
+      secure: process.env.NODE_ENV === "production", // ✅ secure in prod
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
 );
 
-// MongoDB connection
+// ✅ MongoDB connection
 mongoose
   .connect(process.env.MONGODB_URI, {
     dbName: process.env.MONGODB_DB || undefined,
@@ -53,11 +67,15 @@ function todayNY(date) {
 
 function getOAuthClientFromSession(req) {
   const client = createOAuthClient();
-  if (req.session && req.session.tokens) client.setCredentials(req.session.tokens);
+  if (req.session && req.session.tokens) {
+    client.setCredentials(req.session.tokens);
+  }
   return client;
 }
 
-// OAuth routes
+// ---------- OAuth Routes ----------
+
+// Start login: redirect user to Google
 app.get("/auth/google", (req, res) => {
   const oauth2Client = createOAuthClient();
   const url = oauth2Client.generateAuthUrl({
@@ -68,6 +86,7 @@ app.get("/auth/google", (req, res) => {
   res.redirect(url);
 });
 
+// OAuth callback: Google redirects here
 app.get("/auth/callback", async (req, res) => {
   try {
     const code = req.query.code;
@@ -75,7 +94,7 @@ app.get("/auth/callback", async (req, res) => {
     const { tokens } = await oauth2Client.getToken(code);
     req.session.tokens = tokens;
 
-    // Redirect to frontend dynamically
+    // ✅ Redirect back to frontend after login
     res.redirect(`${FRONTEND_URL}/classes`);
   } catch (err) {
     console.error("OAuth callback error", err);
@@ -83,18 +102,16 @@ app.get("/auth/callback", async (req, res) => {
   }
 });
 
-// Helper: find or create Participation assignment in Classroom and return id
+// ---------- Google Classroom Helper ----------
 async function getOrCreateParticipationAssignment(oauth2Client, courseId) {
   const classroom = google.classroom({ version: "v1", auth: oauth2Client });
 
-  // Look for an existing assignment
   const listResp = await classroom.courses.courseWork.list({ courseId });
   const existing = (listResp.data.courseWork || []).find(
     (cw) => cw.title === "Participation"
   );
   if (existing) return existing.id;
 
-  // Otherwise create it
   const createResp = await classroom.courses.courseWork.create({
     courseId,
     requestBody: {
@@ -102,23 +119,21 @@ async function getOrCreateParticipationAssignment(oauth2Client, courseId) {
       description: "Ongoing participation (cumulative, updated daily).",
       workType: "ASSIGNMENT",
       state: "PUBLISHED",
-      maxPoints: 15, // ✅ start with one day’s max
+      maxPoints: 15,
     },
   });
-
   return createResp.data.id;
 }
 
-/**
- * Required endpoints (spec)
- */
+// ---------- API Routes ----------
 
 // GET /api/classes
 app.get("/api/classes", async (req, res) => {
   try {
     const oauth2Client = getOAuthClientFromSession(req);
-    if (!oauth2Client.credentials)
+    if (!oauth2Client.credentials) {
       return res.status(401).json({ error: "Not authenticated" });
+    }
     const classroom = google.classroom({ version: "v1", auth: oauth2Client });
     const resp = await classroom.courses.list({ courseStates: ["ACTIVE"] });
     res.json(resp.data.courses || []);
@@ -132,8 +147,9 @@ app.get("/api/classes", async (req, res) => {
 app.get("/api/classes/:classId/students", async (req, res) => {
   try {
     const oauth2Client = getOAuthClientFromSession(req);
-    if (!oauth2Client.credentials)
+    if (!oauth2Client.credentials) {
       return res.status(401).json({ error: "Not authenticated" });
+    }
     const classroom = google.classroom({ version: "v1", auth: oauth2Client });
     const resp = await classroom.courses.students.list({
       courseId: req.params.classId,
@@ -149,8 +165,9 @@ app.get("/api/classes/:classId/students", async (req, res) => {
 app.get("/api/classes/:classId/assignments", async (req, res) => {
   try {
     const oauth2Client = getOAuthClientFromSession(req);
-    if (!oauth2Client.credentials)
+    if (!oauth2Client.credentials) {
       return res.status(401).json({ error: "Not authenticated" });
+    }
     const classroom = google.classroom({ version: "v1", auth: oauth2Client });
     const resp = await classroom.courses.courseWork.list({
       courseId: req.params.classId,
@@ -162,13 +179,6 @@ app.get("/api/classes/:classId/assignments", async (req, res) => {
   }
 });
 
-/**
- * POST /api/grade
- * body: { courseId, courseWorkId (optional), studentId, scores: {preparation,engagement,critical}, date (optional) }
- * - stores daily record (upsert) in Mongo
- * - computes cumulative sum and patches Classroom assignment (courseWorkId if provided, otherwise uses/get-or-create "Participation")
- */
-// POST /api/grade
 // POST /api/grade
 app.post("/api/grade", async (req, res) => {
   try {
@@ -183,41 +193,35 @@ app.post("/api/grade", async (req, res) => {
       (scores.engagement || 0) +
       (scores.critical || 0);
 
-    // 1. Save daily entry (upsert by course+student+date)
+    // Save daily entry
     await Participation.updateOne(
       { courseId, studentId, date: d },
       { $set: { score: total, categoryScores: scores } },
       { upsert: true }
     );
 
-    // 2. Compute cumulative + distinct days
+    // Aggregate cumulative + days
     const agg = await Participation.aggregate([
       { $match: { courseId, studentId } },
-      {
-        $group: {
-          _id: "$date",
-          score: { $first: "$score" },
-        },
-      },
+      { $group: { _id: "$date", score: { $first: "$score" } } },
     ]);
 
     const cumulative = agg.reduce((sum, g) => sum + (g.score || 0), 0);
     const daysGraded = agg.length;
     const maxPointsSoFar = daysGraded * 15;
 
-    // 3. Authenticate with Classroom
+    // Update Classroom
     const oauth2Client = getOAuthClientFromSession(req);
     if (!oauth2Client.credentials) {
       return res.status(401).json({ error: "Not authenticated" });
     }
     const classroom = google.classroom({ version: "v1", auth: oauth2Client });
 
-    // 4. Find or create Participation assignment
     const cwId =
       courseWorkId ||
       (await getOrCreateParticipationAssignment(oauth2Client, courseId));
 
-    // 5. Update maxPoints dynamically
+    // Update assignment max points
     await classroom.courses.courseWork.patch({
       courseId,
       id: cwId,
@@ -225,7 +229,7 @@ app.post("/api/grade", async (req, res) => {
       requestBody: { maxPoints: maxPointsSoFar },
     });
 
-    // 6. Ensure student submission exists
+    // Find or create submission
     let subsResp = await classroom.courses.courseWork.studentSubmissions.list({
       courseId,
       courseWorkId: cwId,
@@ -253,16 +257,12 @@ app.post("/api/grade", async (req, res) => {
         .json({ error: "Could not create/find student submission" });
     }
 
-    // 7. Update Classroom grade
     await classroom.courses.courseWork.studentSubmissions.patch({
       courseId,
       courseWorkId: cwId,
       id: submission.id,
       updateMask: "draftGrade,assignedGrade",
-      requestBody: {
-        draftGrade: cumulative,
-        assignedGrade: cumulative,
-      },
+      requestBody: { draftGrade: cumulative, assignedGrade: cumulative },
     });
 
     res.json({ success: true, date: d, total, cumulative, maxPointsSoFar });
@@ -272,7 +272,7 @@ app.post("/api/grade", async (req, res) => {
   }
 });
 
-// GET /api/participation/history?courseId=...&studentId=...
+// GET /api/participation/history
 app.get("/api/participation/history", async (req, res) => {
   try {
     const { courseId, studentId, limit = 30 } = req.query;
@@ -280,15 +280,9 @@ app.get("/api/participation/history", async (req, res) => {
       return res.status(400).json({ error: "courseId and studentId required" });
     }
 
-    // Group by distinct date
     const agg = await Participation.aggregate([
       { $match: { courseId, studentId } },
-      {
-        $group: {
-          _id: "$date",
-          score: { $first: "$score" },
-        },
-      },
+      { $group: { _id: "$date", score: { $first: "$score" } } },
       { $sort: { _id: -1 } },
       { $limit: Number(limit) },
     ]);
@@ -296,7 +290,7 @@ app.get("/api/participation/history", async (req, res) => {
     const entries = agg.map((g) => ({ date: g._id, score: g.score }));
     const cumulative = entries.reduce((sum, g) => sum + (g.score || 0), 0);
     const daysGraded = agg.length;
-    const maxPointsSoFar = daysGraded * 15; // ✅ each day max 15 points
+    const maxPointsSoFar = daysGraded * 15;
 
     res.json({ entries, cumulative, daysGraded, maxPointsSoFar });
   } catch (err) {
@@ -318,4 +312,4 @@ app.post("/auth/logout", (req, res) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server listening on ${PORT}`));

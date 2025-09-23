@@ -1,12 +1,18 @@
-// backend/auth.js
+// backend/routes/auth.js
 const { google } = require("googleapis");
 require("dotenv").config();
 
 function createOAuthClient() {
+  // Decide redirect URI based on environment
+  const redirectUri =
+    process.env.NODE_ENV === "production"
+      ? `${process.env.BACKEND_URL}/auth/callback` // e.g. https://discussion-rubric-app.onrender.com/auth/callback
+      : "http://localhost:4000/auth/callback";
+
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
+    redirectUri
   );
 }
 
