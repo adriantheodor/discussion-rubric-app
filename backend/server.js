@@ -135,7 +135,9 @@ async function getOrCreateParticipationAssignment(oauth2Client, courseId) {
 // GET /api/classes
 app.get("/api/classes", async (req, res) => {
   try {
+    console.log("🔎 Session tokens:", req.session.tokens)
     const oauth2Client = getOAuthClientFromSession(req);
+    console.log("🔎 OAuth2Client credentials:", oauth2Client.credentials);
     if (!oauth2Client.credentials) {
       return res.status(401).json({ error: "Not authenticated" });
     }
