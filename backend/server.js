@@ -103,6 +103,10 @@ app.get("/auth/callback", async (req, res) => {
   }
 });
 
+app.get("/debug/session", (req, res) => {
+  res.json(req.session);
+});
+
 // ---------- Google Classroom Helper ----------
 async function getOrCreateParticipationAssignment(oauth2Client, courseId) {
   const classroom = google.classroom({ version: "v1", auth: oauth2Client });
