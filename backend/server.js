@@ -93,10 +93,14 @@ app.get("/auth/callback", async (req, res) => {
     const oauth2Client = createOAuthClient();
     const { tokens } = await oauth2Client.getToken(code);
     req.session.tokens = tokens;
-
-    // ✅ Redirect back to frontend after login
-    res.redirect(`${FRONTEND_URL}/classes`);
-    console.log("Redirecting to frontend:", FRONTEND_URL);
+    req.session.save((err) => {
+      if (err) {
+        console.error("❌ Session save error:", err);
+        return res.status(500).send("Auth session error");
+      }
+      console.log("✅ Tokens saved to session:", tokens);
+      res.redirect(`${FRONTEND_URL}/classes`);
+    });
   } catch (err) {
     console.error("OAuth callback error", err);
     res.status(500).send("Auth error");
@@ -135,7 +139,7 @@ async function getOrCreateParticipationAssignment(oauth2Client, courseId) {
 // GET /api/classes
 app.get("/api/classes", async (req, res) => {
   try {
-    console.log("🔎 Session tokens:", req.session.tokens)
+    console.log("🔎 Session tokens:", req.session.tokens);
     const oauth2Client = getOAuthClientFromSession(req);
     console.log("🔎 OAuth2Client credentials:", oauth2Client.credentials);
     if (!oauth2Client.credentials) {
