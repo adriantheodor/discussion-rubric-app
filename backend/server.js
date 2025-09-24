@@ -96,6 +96,7 @@ app.get("/auth/callback", async (req, res) => {
 
     // ✅ Redirect back to frontend after login
     res.redirect(`${FRONTEND_URL}/classes`);
+    console.log("Redirecting to frontend:", FRONTEND_URL);
   } catch (err) {
     console.error("OAuth callback error", err);
     res.status(500).send("Auth error");
