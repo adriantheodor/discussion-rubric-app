@@ -42,7 +42,8 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: "none", // ✅ allow cross-site
-      secure: process.env.NODE_ENV === "production", // ✅ secure in prod
+      secure: true, // prod must use HTTPS
+      domain: ".onrender.com",
       maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
