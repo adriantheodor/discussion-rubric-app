@@ -7,8 +7,10 @@ const { google } = require("googleapis");
 const mongoose = require("mongoose");
 const { createOAuthClient, getOAuthScopes } = require("./routes/auth");
 const Participation = require("./models/Participation");
-
+const path = require('path');
+const fs = require('fs');
 const app = express();
+const MongoStore = require('connect-mongo');
 
 // ✅ Define frontend + backend URLs from env
 const FRONTEND_URL =
@@ -31,20 +33,22 @@ app.use(
 
 app.use(express.json());
 
-// ✅ trust proxy is required on Render so secure cookies work
-app.set("trust proxy", 1);
+app.set('trust proxy', 1);
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "dev-secret",
+    secret: process.env.SESSION_SECRET || 'dev-secret',
     resave: false,
     saveUninitialized: false,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGODB_URI,
+      mongoOptions: { useNewUrlParser: true, useUnifiedTopology: true }
+    }),
     cookie: {
       httpOnly: true,
-      sameSite: "none", // ✅ allow cross-site
-      secure: true, // prod must use HTTPS
-      domain: ".onrender.com",
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000,
     },
   })
 );
@@ -322,6 +326,25 @@ app.post("/auth/logout", (req, res) => {
     res.json({ success: true });
   });
 });
+
+// Serve static frontend build (if present)
+const possibleBuildPath1 = path.join(__dirname, '..', 'frontend', 'dist'); // Vite default
+const possibleBuildPath2 = path.join(__dirname, '..', 'frontend', 'build'); // CRA default
+const buildPath = fs.existsSync(possibleBuildPath1) ? possibleBuildPath1 : possibleBuildPath2;
+
+if (fs.existsSync(buildPath)) {
+  console.log('✅ Serving frontend from', buildPath);
+  app.use(express.static(buildPath));
+
+  // keep API and auth routes untouched
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/auth')) return next();
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
+} else {
+  console.log('ℹ️ Frontend build not found at', possibleBuildPath1, 'or', possibleBuildPath2);
+}
+
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`🚀 Server listening on ${PORT}`));
