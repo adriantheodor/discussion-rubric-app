@@ -1,4 +1,5 @@
 export const API = import.meta.env.VITE_API || '';
+
 export async function getClasses() {
   const r = await fetch(`${API}/api/classes`, { credentials: "include" });
   return r.json();

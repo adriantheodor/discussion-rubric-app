@@ -327,24 +327,22 @@ app.post("/auth/logout", (req, res) => {
   });
 });
 
-// Serve static frontend build (if present)
-const possibleBuildPath1 = path.join(__dirname, '..', 'frontend', 'dist'); // Vite default
-const possibleBuildPath2 = path.join(__dirname, '..', 'frontend', 'build'); // CRA default
+// ✅ Serve static frontend build (Vite)
+const possibleBuildPath1 = path.join(__dirname, '..', 'frontend', 'dist'); // Vite
+const possibleBuildPath2 = path.join(__dirname, '..', 'frontend', 'build'); // CRA
 const buildPath = fs.existsSync(possibleBuildPath1) ? possibleBuildPath1 : possibleBuildPath2;
 
 if (fs.existsSync(buildPath)) {
   console.log('✅ Serving frontend from', buildPath);
   app.use(express.static(buildPath));
 
-  // keep API and auth routes untouched
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/auth')) return next();
+  // ✅ Use regex instead of '*'
+  app.get(/^\/(?!api|auth).*/, (req, res) => {
     res.sendFile(path.join(buildPath, 'index.html'));
   });
 } else {
   console.log('ℹ️ Frontend build not found at', possibleBuildPath1, 'or', possibleBuildPath2);
 }
-
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`🚀 Server listening on ${PORT}`));
