@@ -41,8 +41,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-      mongoUrl: process.env.MONGODB_URI,
-      mongoOptions: { useNewUrlParser: true, useUnifiedTopology: true }
+      mongoUrl: process.env.MONGODB_URI
     }),
     cookie: {
       httpOnly: true,
@@ -52,6 +51,9 @@ app.use(
     },
   })
 );
+
+// Log masked MongoDB host (helps debugging without exposing credentials)
+console.log('🔒 MongoDB host (masked):', maskMongoHost(process.env.MONGODB_URI));
 
 // ✅ MongoDB connection
 mongoose
@@ -76,6 +78,26 @@ function getOAuthClientFromSession(req) {
     client.setCredentials(req.session.tokens);
   }
   return client;
+}
+
+// Mask MongoDB host for safe logging (don't print credentials)
+function maskMongoHost(uri) {
+  if (!uri) return 'MONGODB_URI not set';
+  try {
+    const u = new URL(uri);
+    const host = (u.host || '').split(':')[0];
+    if (!host) return 'unknown-host';
+    const masked = host.length > 6 ? host.slice(0, 2) + '***' + host.slice(-3) : host.replace(/./g, '*');
+    return masked + (u.port ? ':' + u.port : '');
+  } catch (e) {
+    const m = uri.match(/@([^/]+)/);
+    if (m && m[1]) {
+      const host = m[1].split(':')[0];
+      const masked = host.length > 6 ? host.slice(0, 2) + '***' + host.slice(-3) : host.replace(/./g, '*');
+      return masked;
+    }
+    return 'unknown-host';
+  }
 }
 
 // ---------- OAuth Routes ----------
